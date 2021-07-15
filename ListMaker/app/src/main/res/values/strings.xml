@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">ListMaker</string>
+    <string name="name_of_the_list">What is the name of your list</string>
+    <string name="create_list">Create List</string>
+    <string name="item_number">itemNumber</string>
+    <string name="item_string">item_String</string>
+    <string name="task_to_add">What is the name of the tasks</string>
+    <string name="add_task">Create tasks</string>
+    <string name="list_fragment_tag">List Fragment</string>
+
+</resources>
