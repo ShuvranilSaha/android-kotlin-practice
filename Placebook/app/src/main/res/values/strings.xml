@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">Placebook</string>
+    <string name="title_activity_maps">Map</string>
+    <string name="err_toast_heading">Error</string>
+    <string name="permission_denied">Location Permission Denied</string>
+    <string name="toast_success">Success</string>
+    <string name="permission_granted">Permission Granted</string>
+    <string name="bookmark_image">Bookmark image</string>
+    <string name="name">Name</string>
+    <string name="address">Address</string>
+    <string name="phone">Phone</string>
+    <string name="phone_number">Phone number</string>
+    <string name="notes">Notes</string>
+    <string name="enter_notes">Enter notes</string>
+    <string name="email_id">subranil.saha@gmail.com</string>
+    <string name="placeBook">Placebook</string>
+    <string name="image_desc">Image</string>
+    <string name="bookmark_icon">Bookmark icon</string>
+    <string name="open_drawer">Open Drawer</string>
+    <string name="close_drawer">Close Drawer</string>
+    <string name="category">Category</string>
+    <string name="search">search</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+    <string name="share">share</string>
+</resources>
