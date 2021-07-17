@@ -1,11 +1,12 @@
-package com.subranil_saha.podplay
+package com.subranil_saha.podplay.ui
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import com.subranil_saha.podplay.R
 
-class MainActivity : AppCompatActivity() {
+class PodcastActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_podcast)
     }
 }
