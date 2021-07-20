@@ -2,4 +2,6 @@
     <string name="app_name">Podplay</string>
     <string name="search_hint">Enter Podcast search</string>
     <string name="search">Search</string>
+    <string name="subscribe">Subscribe</string>
+    <string name="ok_btn">Okay</string>
 </resources>
