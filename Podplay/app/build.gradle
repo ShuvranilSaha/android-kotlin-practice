@@ -2,6 +2,7 @@ plugins {
     id 'com.android.application'
     id 'kotlin-android'
 }
+apply plugin: 'kotlin-kapt'
 
 android {
     compileSdkVersion 30
@@ -63,4 +64,10 @@ dependencies {
     // coroutine
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutines_version"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutines_version"
+    // room
+    implementation ("androidx.room:room-common:$room_version")
+    kapt ("androidx.room:room-compiler:$room_version")
+    implementation ("androidx.room:room-runtime:$room_version")
+    // Kotlin Extensions and Coroutines support for Room
+    implementation ("androidx.room:room-ktx:$room_version")
 }

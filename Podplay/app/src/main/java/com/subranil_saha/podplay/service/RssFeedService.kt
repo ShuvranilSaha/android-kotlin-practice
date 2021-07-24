@@ -14,7 +14,6 @@ import retrofit2.http.GET
 import retrofit2.http.Headers
 import retrofit2.http.Url
 import java.util.concurrent.TimeUnit
-import javax.xml.parsers.DocumentBuilder
 import javax.xml.parsers.DocumentBuilderFactory
 
 class RssFeedService private constructor() {
