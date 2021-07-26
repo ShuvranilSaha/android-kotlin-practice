@@ -6,4 +6,6 @@
     <string name="ok_btn">Okay</string>
     <string name="subscribed_podcast">Subscribed</string>
     <string name="unsubscribed">Unsubscribe</string>
+    <string name="episode_notification_title">New Episodes</string>
+    <string name="episode_notification_text">%1$d new episode(s) for %2$s</string>
 </resources>

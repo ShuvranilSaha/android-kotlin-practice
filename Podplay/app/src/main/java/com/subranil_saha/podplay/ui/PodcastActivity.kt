@@ -1,6 +1,5 @@
 package com.subranil_saha.podplay.ui
 
-import androidx.appcompat.app.AlertDialog
 import android.app.SearchManager
 import android.content.Context
 import android.content.Intent
@@ -14,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.work.*
 import com.subranil_saha.podplay.R
 import com.subranil_saha.podplay.adapter.PodcastListAdapter
 import com.subranil_saha.podplay.databinding.ActivityPodcastBinding
@@ -23,7 +23,9 @@ import com.subranil_saha.podplay.service.ItunesService
 import com.subranil_saha.podplay.service.RssFeedService
 import com.subranil_saha.podplay.viewmodel.PodcastViewModel
 import com.subranil_saha.podplay.viewmodel.SearchViewModel
+import com.subranil_saha.podplay.worker.EpisodeUpdateWorker
 import kotlinx.coroutines.*
+import java.util.concurrent.TimeUnit
 
 class PodcastActivity : AppCompatActivity(), PodcastListAdapter.PodcastListAdapterListener,
     PodcastDetailsFragment.OnPodcastDetailsListener {
@@ -34,6 +36,7 @@ class PodcastActivity : AppCompatActivity(), PodcastListAdapter.PodcastListAdapt
     private lateinit var searchMenuItem: MenuItem
     private val podcastViewModel by viewModels<PodcastViewModel>()
 
+    @DelicateCoroutinesApi
     @InternalCoroutinesApi
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,8 +48,10 @@ class PodcastActivity : AppCompatActivity(), PodcastListAdapter.PodcastListAdapt
         handleIntent(intent)
         setupPodcastListView()
         addBackStackListener()
+        scheduleJobs()
     }
 
+    @DelicateCoroutinesApi
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -80,6 +85,7 @@ class PodcastActivity : AppCompatActivity(), PodcastListAdapter.PodcastListAdapt
         return true
     }
 
+    @DelicateCoroutinesApi
     private fun performSearch(term: String) {
         showProgressBar()
         GlobalScope.launch {
@@ -92,10 +98,20 @@ class PodcastActivity : AppCompatActivity(), PodcastListAdapter.PodcastListAdapt
         }
     }
 
+    @DelicateCoroutinesApi
     private fun handleIntent(intent: Intent) {
         if (intent.action === Intent.ACTION_SEARCH) {
             val query = intent.getStringExtra(SearchManager.QUERY) ?: return
             performSearch(query)
+        }
+        val podcastFeedUrl = intent.getStringExtra(EpisodeUpdateWorker.EXTRA_FEED_URL)
+        if (podcastFeedUrl != null) {
+            podcastViewModel.viewModelScope.launch {
+                val podcastSummaryViewData = podcastViewModel.setActivePodcast(podcastFeedUrl)
+                podcastSummaryViewData?.let {
+                    onShowDetails(it)
+                }
+            }
         }
     }
 
@@ -146,6 +162,7 @@ class PodcastActivity : AppCompatActivity(), PodcastListAdapter.PodcastListAdapt
 
     companion object {
         private const val TAG_DETAILS_FRAGMENT = "DetailsFragment"
+        private const val TAG_EPISODE_UPDATE_JOB = "com.subrani_saha.podplay.episodes"
     }
 
     private fun createPodcastDetailsFragment(): PodcastDetailsFragment {
@@ -167,19 +184,30 @@ class PodcastActivity : AppCompatActivity(), PodcastListAdapter.PodcastListAdapt
         searchMenuItem.isVisible = false
     }
 
-    private fun showError(message: String) {
-        AlertDialog.Builder(this)
-            .setMessage(message)
-            .setPositiveButton(getString(R.string.ok_btn), null)
-            .create().show()
-    }
-
     private fun addBackStackListener() {
         supportFragmentManager.addOnBackStackChangedListener {
             if (supportFragmentManager.backStackEntryCount == 0) {
                 dataBinding.podcastRecyclerView.visibility = View.VISIBLE
             }
         }
+    }
+
+    private fun scheduleJobs() {
+        val constraints: Constraints = Constraints.Builder().apply {
+            setRequiredNetworkType(NetworkType.CONNECTED)
+            setRequiresCharging(true)
+        }.build()
+
+        val request = PeriodicWorkRequestBuilder<EpisodeUpdateWorker>(15, TimeUnit.MINUTES)
+            .setConstraints(constraints)
+            .build()
+
+        WorkManager.getInstance(this)
+            .enqueueUniquePeriodicWork(
+                TAG_EPISODE_UPDATE_JOB,
+                ExistingPeriodicWorkPolicy.REPLACE,
+                request
+            )
     }
 
     @DelicateCoroutinesApi

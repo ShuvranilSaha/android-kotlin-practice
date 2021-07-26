@@ -22,7 +22,8 @@ class PodcastViewModel(application: Application) : AndroidViewModel(application)
         .podcastDao()
     private val _podcastLiveData = MutableLiveData<PodcastViewData?>()
     val podcastLiveData: LiveData<PodcastViewData?> = _podcastLiveData
-    private var livePodcastSummaryData: LiveData<List<SearchViewModel.PodcastSummaryViewData>>? = null
+    private var livePodcastSummaryData: LiveData<List<SearchViewModel.PodcastSummaryViewData>>? =
+        null
 
     data class PodcastViewData(
         var subscribed: Boolean = false,
@@ -57,7 +58,7 @@ class PodcastViewModel(application: Application) : AndroidViewModel(application)
 
     private fun podcastToPodcastView(podcast: Podcast): PodcastViewData {
         return PodcastViewData(
-            podcast.id  != null,
+            podcast.id != null,
             podcast.feedTitle,
             podcast.feedUrl,
             podcast.feedDescription,
@@ -118,6 +119,19 @@ class PodcastViewModel(application: Application) : AndroidViewModel(application)
         val repo = podcastRepo ?: return
         activePodcast?.let {
             repo.delete(it)
+        }
+    }
+
+    suspend fun setActivePodcast(feedUrl: String): SearchViewModel.PodcastSummaryViewData? {
+        val repo = podcastRepo ?: return null
+        val podcast = repo.getPodcast(feedUrl)
+
+        return if (podcast == null) {
+            null
+        } else {
+            _podcastLiveData.value = podcastToPodcastView(podcast)
+            activePodcast = podcast
+            podcastToSummaryView(podcast)
         }
     }
 }

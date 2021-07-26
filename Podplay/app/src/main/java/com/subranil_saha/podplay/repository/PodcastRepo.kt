@@ -87,4 +87,59 @@ class PodcastRepo(private var feedService: RssFeedService, private var podcastDa
             podcastDao.deletePodcast(podcast)
         }
     }
+
+    private suspend fun getNewEpisodes(localPodcast: Podcast): List<Episode> {
+        val response = feedService.getFeed(localPodcast.feedUrl)
+        if (response != null) {
+            val remotePodcast =
+                rssResponseToPodcast(localPodcast.feedUrl, localPodcast.imageUrl, response)
+            remotePodcast?.let {
+                val localEpisode = podcastDao.loadEpisodes(localPodcast.id!!)
+                return remotePodcast.episodes.filter { episode ->
+                    localEpisode.find {
+                        episode.guid == it.guid
+                    } == null
+                }
+            }
+        }
+        return listOf()
+    }
+
+    @DelicateCoroutinesApi
+    private fun saveNewEpisode(podcastId: Long, episodes: List<Episode>) {
+        GlobalScope.launch {
+            for (episode in episodes) {
+                episode.podcastId = podcastId
+                podcastDao.insertEpisode(episode)
+            }
+        }
+    }
+
+    class PodcastUpdateInfo(
+        val feedUrl: String,
+        val name: String,
+        val newCount: Int
+    )
+
+    @DelicateCoroutinesApi
+    suspend fun updatePodcastEpisodes(): MutableList<PodcastUpdateInfo> {
+        val updatedPodcast: MutableList<PodcastUpdateInfo> = mutableListOf()
+        val podcasts = podcastDao.loadPodcastsStatic()
+        for (podcast in podcasts) {
+            val newEpisodes = getNewEpisodes(podcast)
+            if (newEpisodes.count() > 0) {
+                podcast.id?.let {
+                    saveNewEpisode(it, newEpisodes)
+                    updatedPodcast.add(
+                        PodcastUpdateInfo(
+                            podcast.feedUrl,
+                            podcast.feedTitle,
+                            newEpisodes.count()
+                        )
+                    )
+                }
+            }
+        }
+        return updatedPodcast
+    }
 }
