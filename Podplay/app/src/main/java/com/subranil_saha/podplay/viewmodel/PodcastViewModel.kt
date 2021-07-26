@@ -15,7 +15,7 @@ import java.util.*
 
 class PodcastViewModel(application: Application) : AndroidViewModel(application) {
     var podcastRepo: PodcastRepo? = null
-    private var activePodcast: Podcast? = null
+    var activePodcast: Podcast? = null
 
     @InternalCoroutinesApi
     val podcastDao: PodcastDao = PodPlayDatabase.getInstance(application, viewModelScope)

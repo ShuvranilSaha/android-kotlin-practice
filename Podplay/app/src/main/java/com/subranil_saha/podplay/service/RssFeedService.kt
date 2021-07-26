@@ -39,24 +39,24 @@ class RssFeedService private constructor() {
 
         try {
             val result = service.getFeed(xmlFileURL)
-            return if (result.code() >= 400) {
-                println("server error , ${result.code()}, ${result.errorBody()}")
-                null
+            if (result.code() >= 400) {
+                println("server error, ${result.code()}, ${result.errorBody()}")
+                return null
             } else {
-                var rssFeedResponse: RssFeedResponse? = null
+                var rssFeedResponse: RssFeedResponse?
                 val dbFactory = DocumentBuilderFactory.newInstance()
-                val dbBuilder = dbFactory.newDocumentBuilder()
+                val dBuilder = dbFactory.newDocumentBuilder()
                 withContext(Dispatchers.IO) {
-                    val doc = dbBuilder.parse(result.body()?.byteStream())
+                    val doc = dBuilder.parse(result.body()?.byteStream())
                     val rss = RssFeedResponse(episodes = mutableListOf())
                     domToRssFeedResponse(doc, rss)
                     println(rss)
                     rssFeedResponse = rss
                 }
-                rssFeedResponse
+                return rssFeedResponse
             }
-        } catch (e: Throwable) {
-            print("error : ${e.localizedMessage}")
+        } catch (t: Throwable) {
+            println("error, ${t.localizedMessage}")
         }
         return null
     }
@@ -65,10 +65,14 @@ class RssFeedService private constructor() {
         if (node.nodeType == Node.ELEMENT_NODE) {
             val nodeName = node.nodeName
             val parentName = node.parentNode.nodeName
+            // 1
             val grandParentName = node.parentNode.parentNode?.nodeName ?: ""
-            if (parentName == "item" && grandParentName == "Channel") {
+            // 2
+            if (parentName == "item" && grandParentName == "channel") {
+                // 3
                 val currentItem = rssFeedResponse.episodes?.last()
                 if (currentItem != null) {
+                    // 4
                     when (nodeName) {
                         "title" -> currentItem.title = node.textContent
                         "description" -> currentItem.description = node.textContent
@@ -83,7 +87,7 @@ class RssFeedService private constructor() {
                     }
                 }
             }
-            if (parentName == "Channel") {
+            if (parentName == "channel") {
                 when (nodeName) {
                     "title" -> rssFeedResponse.title = node.textContent
                     "description" -> rssFeedResponse.description = node.textContent
@@ -114,6 +118,5 @@ interface FeedService {
         "Accept: application/xml"
     )
     @GET
-    suspend fun getFeed(@Url xmlFileURL: String):
-            Response<ResponseBody>
+    suspend fun getFeed(@Url xmlFileURL: String): Response<ResponseBody>
 }
