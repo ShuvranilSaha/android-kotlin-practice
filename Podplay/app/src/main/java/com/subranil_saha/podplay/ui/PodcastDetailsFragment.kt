@@ -28,8 +28,9 @@ import com.subranil_saha.podplay.viewmodel.PodcastViewModel
 import java.lang.RuntimeException
 
 class PodcastDetailsFragment : Fragment(), EpisodeListAdapter.EpisodeListAdapterListener {
-    private lateinit var dataBinding: FragmentPodcastDetailsBinding
+
     private val podcastViewModel: PodcastViewModel by activityViewModels()
+    private lateinit var databinding: FragmentPodcastDetailsBinding
     private lateinit var episodeListAdapter: EpisodeListAdapter
     private var listener: OnPodcastDetailsListener? = null
     private lateinit var mediaBrowser: MediaBrowserCompat
@@ -44,7 +45,43 @@ class PodcastDetailsFragment : Fragment(), EpisodeListAdapter.EpisodeListAdapter
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setHasOptionsMenu(true)
-        initialiseMediaBrowser()
+        initMediaBrowser()
+    }
+
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
+                              savedInstanceState: Bundle?): View {
+        databinding = FragmentPodcastDetailsBinding.inflate(inflater, container, false)
+        return databinding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        podcastViewModel.podcastLiveData.observe(viewLifecycleOwner, { viewData ->
+            if (viewData != null) {
+                databinding.feedTitleTextview.text = viewData.feedTitle
+                databinding.feedDescriptionTextView.text = viewData.feedDesc
+                activity?.let { activity ->
+                    Glide.with(activity).load(viewData.imageUrl).into(databinding.feedImageView)
+                }
+
+                // 1
+                databinding.feedDescriptionTextView.movementMethod = ScrollingMovementMethod()
+                // 2
+                databinding.episodeRecyclerView.setHasFixedSize(true)
+
+                val layoutManager = LinearLayoutManager(activity)
+                databinding.episodeRecyclerView.layoutManager = layoutManager
+
+                val dividerItemDecoration = DividerItemDecoration(
+                    databinding.episodeRecyclerView.context, layoutManager.orientation)
+                databinding.episodeRecyclerView.addItemDecoration(dividerItemDecoration)
+                // 3
+                episodeListAdapter = EpisodeListAdapter(viewData.episode, this)
+                databinding.episodeRecyclerView.adapter = episodeListAdapter
+                activity?.invalidateOptionsMenu()
+            }
+        })
     }
 
     override fun onAttach(context: Context) {
@@ -52,73 +89,9 @@ class PodcastDetailsFragment : Fragment(), EpisodeListAdapter.EpisodeListAdapter
         if (context is OnPodcastDetailsListener) {
             listener = context
         } else {
-            throw RuntimeException("$context must implement OnPodcastDetailsListener")
+            throw RuntimeException(context.toString() +
+                    " must implement OnPodcastDetailsListener")
         }
-    }
-
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        dataBinding = FragmentPodcastDetailsBinding.inflate(inflater, container, false)
-        return dataBinding.root
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        podcastViewModel.podcastLiveData.observe(viewLifecycleOwner, {
-            if (it != null) {
-                dataBinding.feedTitleTextview.text = it.feedTitle
-                dataBinding.feedDescriptionTextView.text = it.feedDesc
-                activity?.let { activity ->
-                    Glide.with(activity).load(it.imageUrl).into(dataBinding.feedImageView)
-                }
-                dataBinding.feedDescriptionTextView.movementMethod =
-                    ScrollingMovementMethod() // if list is long then it can scroll
-                dataBinding.episodeRecyclerView.setHasFixedSize(true) // standard setup for recyclerView
-                val layoutManager = LinearLayoutManager(activity)
-                dataBinding.episodeRecyclerView.layoutManager = layoutManager
-                val dividerItemDecoration = DividerItemDecoration(
-                    dataBinding.episodeRecyclerView.context,
-                    layoutManager.orientation
-                )
-                dataBinding.episodeRecyclerView.addItemDecoration(dividerItemDecoration)
-                episodeListAdapter =
-                    EpisodeListAdapter(
-                        it.episode,
-                        this
-                    ) // list of episodes and assigning to recyclerView
-                dataBinding.episodeRecyclerView.adapter = episodeListAdapter
-
-                activity?.invalidateOptionsMenu()
-            }
-        })
-    }
-
-    private fun startPlaying(episodeViewData: PodcastViewModel.EpisodeViewData) {
-        val fragmentActivity = activity as FragmentActivity
-        val controller = MediaControllerCompat.getMediaController(fragmentActivity)
-        val viewData = podcastViewModel.activePodcast
-        val bundle = Bundle()
-        bundle.putString(MediaMetadataCompat.METADATA_KEY_TITLE, episodeViewData.title)
-        if (viewData != null) {
-            bundle.putString(MediaMetadataCompat.METADATA_KEY_ARTIST, viewData.feedTitle)
-            bundle.putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, viewData.imageUrl)
-        }
-        controller.transportControls.playFromUri(Uri.parse(episodeViewData.mediaUrl), bundle)
-    }
-
-    override fun onPrepareOptionsMenu(menu: Menu) {
-        podcastViewModel.podcastLiveData.observe(this, {
-            if (it != null) {
-                menu.findItem(R.id.menu_feed_action).title = if (it.subscribed) {
-                    getString(R.string.unsubscribed)
-                } else {
-                    getString(R.string.subscribe)
-                }
-            }
-        })
-        super.onPrepareOptionsMenu(menu)
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -136,10 +109,20 @@ class PodcastDetailsFragment : Fragment(), EpisodeListAdapter.EpisodeListAdapter
                 }
                 true
             }
-            else -> {
+            else ->
                 super.onOptionsItemSelected(item)
-            }
         }
+    }
+
+    override fun onPrepareOptionsMenu(menu: Menu) {
+        podcastViewModel.podcastLiveData.observe(viewLifecycleOwner, { podcast ->
+            if (podcast != null) {
+                menu.findItem(R.id.menu_feed_action).title = if (podcast.subscribed)
+                    getString(R.string.unsubscribed) else getString(R.string.subscribe)
+            }
+        })
+
+        super.onPrepareOptionsMenu(menu)
     }
 
     override fun onStart() {
@@ -159,19 +142,19 @@ class PodcastDetailsFragment : Fragment(), EpisodeListAdapter.EpisodeListAdapter
         val fragmentActivity = activity as FragmentActivity
         if (MediaControllerCompat.getMediaController(fragmentActivity) != null) {
             mediaControllerCallback?.let {
-                MediaControllerCompat.getMediaController(fragmentActivity).unregisterCallback(it)
+                MediaControllerCompat.getMediaController(fragmentActivity)
+                    .unregisterCallback(it)
             }
         }
     }
 
-    private fun initialiseMediaBrowser() {
-        val fragmentActivity = activity as FragmentActivity
-        mediaBrowser = MediaBrowserCompat(
-            fragmentActivity,
-            ComponentName(fragmentActivity, PodplayMediaService::class.java),
-            MediaBrowserCallBacks(),
-            null
-        )
+    private fun updateControls() {
+        val viewData = podcastViewModel.podcastLiveData
+        databinding.feedTitleTextview.text = viewData.value?.feedTitle
+        databinding.feedDescriptionTextView.text = viewData.value?.feedDesc
+        activity?.let { activity ->
+            Glide.with(activity).load(viewData.value?.imageUrl).into(databinding.feedImageView)
+        }
     }
 
     private fun registerMediaController(token: MediaSessionCompat.Token) {
@@ -182,20 +165,54 @@ class PodcastDetailsFragment : Fragment(), EpisodeListAdapter.EpisodeListAdapter
         mediaController.registerCallback(mediaControllerCallback!!)
     }
 
-    inner class MediaBrowserCallBacks : MediaBrowserCompat.ConnectionCallback() {
+    private fun initMediaBrowser() {
+        val fragmentActivity = activity as FragmentActivity
+        mediaBrowser = MediaBrowserCompat(fragmentActivity,
+            ComponentName(fragmentActivity, PodplayMediaService::class.java),
+            MediaBrowserCallBacks(),
+            null)
+    }
+
+    private fun startPlaying(episodeViewData: PodcastViewModel.EpisodeViewData) {
+        val fragmentActivity = activity as FragmentActivity
+        val controller = MediaControllerCompat.getMediaController(fragmentActivity)
+        val viewData = podcastViewModel.podcastLiveData
+        val bundle = Bundle()
+
+        bundle.putString(MediaMetadataCompat.METADATA_KEY_TITLE, episodeViewData.title)
+        bundle.putString(MediaMetadataCompat.METADATA_KEY_ARTIST, viewData.value?.feedTitle)
+        bundle.putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, viewData.value?.imageUrl)
+
+        controller.transportControls.playFromUri(Uri.parse(episodeViewData.mediaUrl), bundle)
+    }
+
+    inner class MediaBrowserCallBacks: MediaBrowserCompat.ConnectionCallback() {
+
         override fun onConnected() {
             super.onConnected()
-            println("on connected")
+            registerMediaController(mediaBrowser.sessionToken)
+            println("onConnected")
         }
 
         override fun onConnectionSuspended() {
             super.onConnectionSuspended()
             println("onConnectionSuspended")
+            // Disable transport controls
         }
 
         override fun onConnectionFailed() {
             super.onConnectionFailed()
             println("onConnectionFailed")
+            // Fatal error handling
+        }
+    }
+
+    inner class MediaControllerCallback: MediaControllerCompat.Callback() {
+        override fun onMetadataChanged(metadata: MediaMetadataCompat?) {
+            println("metadata changed to ${metadata?.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI)}")
+        }
+        override fun onPlaybackStateChanged(state: PlaybackStateCompat?) {
+            println("state changed to $state")
         }
     }
 
@@ -204,29 +221,22 @@ class PodcastDetailsFragment : Fragment(), EpisodeListAdapter.EpisodeListAdapter
         fun onUnsubscribe()
     }
 
-    inner class MediaControllerCallback : MediaControllerCompat.Callback() {
-        override fun onPlaybackStateChanged(state: PlaybackStateCompat?) {
-            super.onPlaybackStateChanged(state)
-            println("state changed to $state")
-        }
-
-        @RequiresApi(Build.VERSION_CODES.O)
-        override fun onMetadataChanged(metadata: MediaMetadataCompat?) {
-            super.onMetadataChanged(metadata)
-            println("metadata changed to ${metadata?.getString(MediaMetadata.METADATA_KEY_MEDIA_URI)}")
-        }
-    }
-
     override fun onSelectedEpisode(episodeViewData: PodcastViewModel.EpisodeViewData) {
+        // 1
         val fragmentActivity = activity as FragmentActivity
+        // 2
         val controller = MediaControllerCompat.getMediaController(fragmentActivity)
+        // 3
         if (controller.playbackState != null) {
             if (controller.playbackState.state == PlaybackStateCompat.STATE_PLAYING) {
+                // 4
                 controller.transportControls.pause()
             } else {
+                // 5
                 startPlaying(episodeViewData)
             }
         } else {
+            // 6
             startPlaying(episodeViewData)
         }
     }
