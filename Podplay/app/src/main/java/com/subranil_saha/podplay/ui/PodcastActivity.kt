@@ -162,7 +162,8 @@ class PodcastActivity : AppCompatActivity(), PodcastListAdapter.PodcastListAdapt
 
     companion object {
         private const val TAG_DETAILS_FRAGMENT = "DetailsFragment"
-        private const val TAG_EPISODE_UPDATE_JOB = "com.subrani_saha.podplay.episodes"
+        private const val TAG_EPISODE_UPDATE_JOB = "com.subranil_saha.podplay.episodes"
+        private const val TAG_PLAYER_FRAGMENT = "PlayerFragment"
     }
 
     private fun createPodcastDetailsFragment(): PodcastDetailsFragment {
@@ -222,6 +223,11 @@ class PodcastActivity : AppCompatActivity(), PodcastListAdapter.PodcastListAdapt
         supportFragmentManager.popBackStack()
     }
 
+    override fun onShowEpisodePlayer(episodeViewData: PodcastViewModel.EpisodeViewData) {
+        podcastViewModel.activeEpisodeViewData = episodeViewData
+        showPlayerFragment()
+    }
+
     private fun showSubscribedPodcast() {
         val podcasts = podcastViewModel.getPodcasts()?.value
         if (podcasts != null) {
@@ -236,5 +242,23 @@ class PodcastActivity : AppCompatActivity(), PodcastListAdapter.PodcastListAdapt
                 showSubscribedPodcast()
             }
         })
+    }
+
+    private fun createEpisodePlayerFragment(): EpisodePlayerFragment {
+        var episodePlayerFragment =
+            supportFragmentManager.findFragmentByTag(TAG_PLAYER_FRAGMENT) as EpisodePlayerFragment?
+        if (episodePlayerFragment == null) {
+            episodePlayerFragment = EpisodePlayerFragment.newInstance()
+        }
+        return episodePlayerFragment
+    }
+
+    private fun showPlayerFragment() {
+        val episodePlayerFragment = createEpisodePlayerFragment()
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.podcast_details_container, episodePlayerFragment, TAG_PLAYER_FRAGMENT)
+            .addToBackStack("PlayerFragment").commit()
+        dataBinding.podcastRecyclerView.visibility = View.INVISIBLE
+        searchMenuItem.isVisible = false
     }
 }
